@@ -8,6 +8,7 @@ import DashboardOverall from "./pages/DashboardOverall";
 import DashboardDemographics from "./pages/DashboardDemographics";
 import DashboardPerformance from "./pages/DashboardPerformance";
 import ManageUsers from "./pages/ManageUsers";
+import AddUser from "./pages/AddUser";
 import ManageTargets from "./pages/ManageTargets";
 import NeedsAnalysisRequests from "./pages/NeedsAnalysisRequests";
 import NeedsAnalysis from "./pages/NeedsAnalysis";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/dashboard/demographics" element={<DashboardDemographics />} />
             <Route path="/dashboard/performance" element={<DashboardPerformance />} />
             <Route path="/manage-users" element={<ManageUsers />} />
+            <Route path="/manage-users/add" element={<AddUser />} />
             <Route path="/manage-targets" element={<ManageTargets />} />
             <Route path="/needs-analysis-requests" element={<NeedsAnalysisRequests />} />
             <Route path="/needs-analysis" element={<NeedsAnalysis />} />
