@@ -12,6 +12,8 @@ import AddUser from "./pages/AddUser";
 import ManageTargets from "./pages/ManageTargets";
 import NeedsAnalysisRequests from "./pages/NeedsAnalysisRequests";
 import NeedsAnalysis from "./pages/NeedsAnalysis";
+import Profile from "./pages/Profile";
+import ChangePassword from "./pages/ChangePassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,6 +35,8 @@ const App = () => (
             <Route path="/manage-targets" element={<ManageTargets />} />
             <Route path="/needs-analysis-requests" element={<NeedsAnalysisRequests />} />
             <Route path="/needs-analysis" element={<NeedsAnalysis />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/change-password" element={<ChangePassword />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
