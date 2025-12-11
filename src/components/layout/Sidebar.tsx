@@ -71,7 +71,7 @@ const SubNavItem = ({ to, icon, label, collapsed }: SubNavItemProps) => {
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
-  const { isAdmin } = useUser();
+  const { isAdmin, isPartner, isClient } = useUser();
 
   return (
     <aside 
@@ -156,7 +156,7 @@ const Sidebar = () => {
         )}
 
         {/* Partner-only navigation items */}
-        {!isAdmin && (
+        {isPartner && (
           <>
             <div className="my-4" />
             
@@ -175,6 +175,8 @@ const Sidebar = () => {
             />
           </>
         )}
+
+        {/* Client view - only Dashboard tabs shown above */}
       </nav>
       
       <div className="p-4">
