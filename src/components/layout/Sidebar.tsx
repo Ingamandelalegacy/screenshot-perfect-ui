@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import Logo from './Logo';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/contexts/UserContext';
 
 interface NavItemProps {
   to: string;
@@ -69,6 +70,7 @@ const SubNavItem = ({ to, icon, label, collapsed }: SubNavItemProps) => {
 const Sidebar = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [dashboardExpanded, setDashboardExpanded] = useState(true);
+  const { isAdmin } = useUser();
 
   return (
     <aside 
@@ -117,35 +119,40 @@ const Sidebar = () => {
           )}
         </div>
         
-        <div className="my-4" />
-        
-        <NavItem
-          to="/manage-users"
-          icon={<UserCog size={18} />}
-          label="Manage Users"
-          collapsed={collapsed}
-        />
-        
-        <NavItem
-          to="/manage-targets"
-          icon={<Target size={18} />}
-          label="Manage Targets"
-          collapsed={collapsed}
-        />
-        
-        <NavItem
-          to="/needs-analysis-requests"
-          icon={<ClipboardList size={18} />}
-          label="Needs Analysis & Scorecard Requests"
-          collapsed={collapsed}
-        />
-        
-        <NavItem
-          to="/needs-analysis"
-          icon={<FileText size={18} />}
-          label="Needs Analysis & Scorecard"
-          collapsed={collapsed}
-        />
+        {/* Admin-only navigation items */}
+        {isAdmin && (
+          <>
+            <div className="my-4" />
+            
+            <NavItem
+              to="/manage-users"
+              icon={<UserCog size={18} />}
+              label="Manage Users"
+              collapsed={collapsed}
+            />
+            
+            <NavItem
+              to="/manage-targets"
+              icon={<Target size={18} />}
+              label="Manage Targets"
+              collapsed={collapsed}
+            />
+            
+            <NavItem
+              to="/needs-analysis-requests"
+              icon={<ClipboardList size={18} />}
+              label="Needs Analysis & Scorecard Requests"
+              collapsed={collapsed}
+            />
+            
+            <NavItem
+              to="/needs-analysis"
+              icon={<FileText size={18} />}
+              label="Needs Analysis & Scorecard"
+              collapsed={collapsed}
+            />
+          </>
+        )}
       </nav>
       
       <div className="p-4">
