@@ -161,6 +161,13 @@ const Sidebar = () => {
             <div className="my-4" />
             
             <NavItem
+              to="/client-profile"
+              icon={<Users size={18} />}
+              label="Client Profile"
+              collapsed={collapsed}
+            />
+            
+            <NavItem
               to="/upload"
               icon={<Upload size={18} />}
               label="Upload Data"

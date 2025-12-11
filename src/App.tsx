@@ -16,6 +16,7 @@ import NeedsAnalysis from "./pages/NeedsAnalysis";
 import Profile from "./pages/Profile";
 import ChangePassword from "./pages/ChangePassword";
 import Upload from "./pages/Upload";
+import ClientProfile from "./pages/ClientProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
               <Route path="/profile" element={<Profile />} />
               <Route path="/change-password" element={<ChangePassword />} />
               <Route path="/upload" element={<Upload />} />
+              <Route path="/client-profile" element={<ClientProfile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
