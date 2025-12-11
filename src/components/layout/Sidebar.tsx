@@ -8,6 +8,7 @@ import {
   Target, 
   ClipboardList, 
   FileText,
+  Upload,
   ChevronLeft,
   ChevronRight,
   ChevronDown,
@@ -149,6 +150,20 @@ const Sidebar = () => {
               to="/needs-analysis"
               icon={<FileText size={18} />}
               label="Needs Analysis & Scorecard"
+              collapsed={collapsed}
+            />
+          </>
+        )}
+
+        {/* Partner-only navigation items */}
+        {!isAdmin && (
+          <>
+            <div className="my-4" />
+            
+            <NavItem
+              to="/upload"
+              icon={<Upload size={18} />}
+              label="Upload Data"
               collapsed={collapsed}
             />
           </>
