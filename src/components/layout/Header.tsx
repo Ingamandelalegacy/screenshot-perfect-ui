@@ -13,7 +13,7 @@ import { useUser } from '@/contexts/UserContext';
 const Header = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user, setUserRole, isAdmin, isPartner } = useUser();
+  const { user, setUserRole, isAdmin, isPartner, isClient } = useUser();
 
   const handleLogout = () => {
     // TODO: Implement actual logout with Lovable Cloud
@@ -24,12 +24,12 @@ const Header = () => {
     navigate('/');
   };
 
-  const handleSwitchRole = () => {
-    const newRole = isAdmin ? 'partner' : 'admin';
-    setUserRole(newRole);
+  const handleSwitchToRole = (role: 'admin' | 'partner' | 'client') => {
+    setUserRole(role);
+    const roleNames = { admin: 'Admin', partner: 'Partner', client: 'Client' };
     toast({
       title: "Role switched",
-      description: `Now viewing as ${newRole === 'admin' ? 'Admin' : 'Partner'}`,
+      description: `Now viewing as ${roleNames[role]}`,
     });
     navigate('/dashboard/overall');
   };
@@ -54,10 +54,24 @@ const Header = () => {
             Change Password
           </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleSwitchRole} className="cursor-pointer">
-            <Users size={16} className="mr-2" />
-            Switch to {isAdmin ? 'Partner' : 'Admin'} View
-          </DropdownMenuItem>
+          {!isAdmin && (
+            <DropdownMenuItem onClick={() => handleSwitchToRole('admin')} className="cursor-pointer">
+              <Users size={16} className="mr-2" />
+              Switch to Admin View
+            </DropdownMenuItem>
+          )}
+          {!isPartner && (
+            <DropdownMenuItem onClick={() => handleSwitchToRole('partner')} className="cursor-pointer">
+              <Users size={16} className="mr-2" />
+              Switch to Partner View
+            </DropdownMenuItem>
+          )}
+          {!isClient && (
+            <DropdownMenuItem onClick={() => handleSwitchToRole('client')} className="cursor-pointer">
+              <Users size={16} className="mr-2" />
+              Switch to Client View
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
             <LogOut size={16} className="mr-2" />
