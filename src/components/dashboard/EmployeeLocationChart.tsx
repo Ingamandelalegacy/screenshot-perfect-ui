@@ -1,9 +1,6 @@
 import { Menu } from 'lucide-react';
-import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
-import { useState } from 'react';
-
-// South African provinces TopoJSON from deldersveld collection
-const geoUrl = 'https://raw.githubusercontent.com/deldersveld/topojson/master/countries/south-africa/south-africa-provinces.json';
+import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from 'react-simple-maps';
+import { useState, useEffect } from 'react';
 
 // Province data with coordinates for markers
 const provinceData: Record<string, { employees: number; coordinates: [number, number] }> = {
@@ -14,41 +11,70 @@ const provinceData: Record<string, { employees: number; coordinates: [number, nu
   'Limpopo': { employees: 0, coordinates: [29.5, -23.5] },
   'Mpumalanga': { employees: 0, coordinates: [30.0, -25.5] },
   'Northern Cape': { employees: 0, coordinates: [21.0, -29.0] },
-  'North West': { employees: 0, coordinates: [25.5, -26.5] },
+  'North West': { employees: 0, coordinates: [25.5, -26.0] },
   'Western Cape': { employees: 38, coordinates: [19.5, -33.5] },
 };
 
-// Map province names from GeoJSON to our data
-const getProvinceKey = (geoName: string): string => {
+// Map province names from various GeoJSON formats
+const normalizeProvinceName = (name: string): string => {
+  const normalized = name?.toLowerCase().trim() || '';
   const mappings: Record<string, string> = {
-    'Eastern Cape': 'Eastern Cape',
-    'Free State': 'Free State',
-    'Gauteng': 'Gauteng',
-    'KwaZulu-Natal': 'KwaZulu-Natal',
-    'Kwazulu-Natal': 'KwaZulu-Natal',
-    'Limpopo': 'Limpopo',
-    'Mpumalanga': 'Mpumalanga',
-    'Northern Cape': 'Northern Cape',
-    'North West': 'North West',
-    'North-West': 'North West',
-    'Western Cape': 'Western Cape',
+    'eastern cape': 'Eastern Cape',
+    'free state': 'Free State',
+    'gauteng': 'Gauteng',
+    'kwazulu-natal': 'KwaZulu-Natal',
+    'kwazulu natal': 'KwaZulu-Natal',
+    'kzn': 'KwaZulu-Natal',
+    'limpopo': 'Limpopo',
+    'mpumalanga': 'Mpumalanga',
+    'northern cape': 'Northern Cape',
+    'north west': 'North West',
+    'north-west': 'North West',
+    'northwest': 'North West',
+    'western cape': 'Western Cape',
   };
-  return mappings[geoName] || geoName;
+  return mappings[normalized] || name;
 };
 
 const getColorIntensity = (value: number, max: number): string => {
-  if (value === 0) return 'hsl(220, 20%, 92%)';
+  if (value === 0) return 'hsl(220, 25%, 90%)';
   const intensity = Math.min(value / max, 1);
-  // Blue gradient: from light to dark blue
-  const lightness = 85 - intensity * 45;
-  return `hsl(220, 50%, ${lightness}%)`;
+  const lightness = 75 - intensity * 35;
+  return `hsl(220, 55%, ${lightness}%)`;
 };
 
 const EmployeeLocationChart = () => {
   const [tooltipContent, setTooltipContent] = useState<string>('');
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [geoData, setGeoData] = useState<object | null>(null);
   
   const maxEmployees = Math.max(...Object.values(provinceData).map(p => p.employees));
+
+  useEffect(() => {
+    // Fetch South Africa provinces TopoJSON
+    fetch('https://code.highcharts.com/mapdata/countries/za/za-all.topo.json')
+      .then(response => response.json())
+      .then(data => {
+        setGeoData(data);
+      })
+      .catch(err => console.error('Failed to load map data:', err));
+  }, []);
+
+  if (!geoData) {
+    return (
+      <div className="py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex-1 text-center">
+            <h3 className="text-lg font-semibold text-foreground">Employee per Location</h3>
+            <p className="text-sm text-muted-foreground">Provinces of South Africa (Monthly Average)</p>
+          </div>
+        </div>
+        <div className="h-[400px] flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Loading map...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="py-4">
@@ -63,117 +89,154 @@ const EmployeeLocationChart = () => {
       </div>
       
       {/* Map Container */}
-      <div className="relative h-[400px] w-full flex items-center justify-center">
+      <div className="relative h-[400px] w-full">
         {tooltipContent && (
           <div 
-            className="absolute z-10 bg-popover border border-border rounded-md px-3 py-2 shadow-lg pointer-events-none"
-            style={{ left: tooltipPosition.x, top: tooltipPosition.y, transform: 'translate(-50%, -100%)' }}
+            className="absolute z-20 bg-popover border border-border rounded-md px-3 py-2 shadow-lg pointer-events-none text-sm"
+            style={{ left: tooltipPosition.x, top: tooltipPosition.y, transform: 'translate(-50%, -120%)' }}
           >
-            <span className="text-sm font-medium text-foreground">{tooltipContent}</span>
+            <span className="font-medium text-foreground">{tooltipContent}</span>
           </div>
         )}
         
         <ComposableMap
           projection="geoMercator"
           projectionConfig={{
-            scale: 1200,
+            scale: 1100,
             center: [25, -29],
           }}
-          className="w-full h-full"
+          style={{ width: '100%', height: '100%' }}
         >
-          <Geographies geography={geoUrl}>
-            {({ geographies }) =>
-              geographies.map((geo) => {
-                const provinceName = geo.properties.NAME_1 || geo.properties.name || '';
-                const mappedName = getProvinceKey(provinceName);
-                const data = provinceData[mappedName];
-                const employees = data?.employees || 0;
-                
-                return (
-                  <Geography
-                    key={geo.rsmKey}
-                    geography={geo}
-                    fill={getColorIntensity(employees, maxEmployees)}
-                    stroke="hsl(var(--border))"
-                    strokeWidth={0.5}
-                    style={{
-                      default: { outline: 'none' },
-                      hover: { 
-                        fill: employees > 0 ? 'hsl(220, 60%, 50%)' : 'hsl(220, 20%, 85%)',
-                        outline: 'none',
-                        cursor: 'pointer'
-                      },
-                      pressed: { outline: 'none' },
-                    }}
-                    onMouseEnter={(evt) => {
-                      const rect = (evt.target as SVGElement).getBoundingClientRect();
-                      const container = (evt.target as SVGElement).closest('.relative')?.getBoundingClientRect();
-                      if (container) {
-                        setTooltipPosition({
-                          x: rect.left + rect.width / 2 - container.left,
-                          y: rect.top - container.top - 10
-                        });
-                      }
-                      setTooltipContent(`${mappedName}: ${employees} employees`);
-                    }}
-                    onMouseLeave={() => {
-                      setTooltipContent('');
-                    }}
+          <ZoomableGroup center={[25, -29]} zoom={1}>
+            <Geographies geography={geoData}>
+              {({ geographies }) =>
+                geographies.map((geo) => {
+                  const props = geo.properties;
+                  const rawName = props['hc-a2'] || props.name || props.NAME_1 || props.NAME || '';
+                  
+                  // Map Highcharts codes to province names
+                  const codeToName: Record<string, string> = {
+                    'EC': 'Eastern Cape',
+                    'FS': 'Free State',
+                    'GT': 'Gauteng',
+                    'NL': 'KwaZulu-Natal',
+                    'LP': 'Limpopo',
+                    'MP': 'Mpumalanga',
+                    'NC': 'Northern Cape',
+                    'NW': 'North West',
+                    'WC': 'Western Cape',
+                  };
+                  
+                  const provinceName = codeToName[rawName] || normalizeProvinceName(rawName);
+                  const data = provinceData[provinceName];
+                  const employees = data?.employees || 0;
+                  
+                  return (
+                    <Geography
+                      key={geo.rsmKey}
+                      geography={geo}
+                      fill={getColorIntensity(employees, maxEmployees)}
+                      stroke="hsl(220, 20%, 70%)"
+                      strokeWidth={0.8}
+                      style={{
+                        default: { outline: 'none' },
+                        hover: { 
+                          fill: employees > 0 ? 'hsl(220, 60%, 50%)' : 'hsl(220, 25%, 82%)',
+                          outline: 'none',
+                          cursor: 'pointer',
+                          strokeWidth: 1.5
+                        },
+                        pressed: { outline: 'none' },
+                      }}
+                      onMouseEnter={(evt) => {
+                        const { clientX, clientY } = evt;
+                        const container = (evt.target as SVGElement).closest('.relative');
+                        if (container) {
+                          const rect = container.getBoundingClientRect();
+                          setTooltipPosition({
+                            x: clientX - rect.left,
+                            y: clientY - rect.top
+                          });
+                        }
+                        setTooltipContent(`${provinceName}: ${employees} employees`);
+                      }}
+                      onMouseMove={(evt) => {
+                        const { clientX, clientY } = evt;
+                        const container = (evt.target as SVGElement).closest('.relative');
+                        if (container) {
+                          const rect = container.getBoundingClientRect();
+                          setTooltipPosition({
+                            x: clientX - rect.left,
+                            y: clientY - rect.top
+                          });
+                        }
+                      }}
+                      onMouseLeave={() => {
+                        setTooltipContent('');
+                      }}
+                    />
+                  );
+                })
+              }
+            </Geographies>
+            
+            {/* Province markers with employee counts */}
+            {Object.entries(provinceData).map(([name, data]) => (
+              data.employees > 0 && (
+                <Marker key={name} coordinates={data.coordinates}>
+                  <circle
+                    r={Math.max(5, Math.sqrt(data.employees) / 2.5)}
+                    fill="hsl(25, 90%, 55%)"
+                    stroke="#fff"
+                    strokeWidth={1.5}
+                    style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.3))' }}
                   />
-                );
-              })
-            }
-          </Geographies>
-          
-          {/* Province markers with employee counts */}
-          {Object.entries(provinceData).map(([name, data]) => (
-            data.employees > 0 && (
-              <Marker key={name} coordinates={data.coordinates}>
-                <circle
-                  r={Math.max(6, Math.sqrt(data.employees) / 2)}
-                  fill="hsl(220, 70%, 45%)"
-                  stroke="#fff"
-                  strokeWidth={2}
-                  opacity={0.9}
-                />
-                <text
-                  textAnchor="middle"
-                  y={-Math.max(8, Math.sqrt(data.employees) / 2) - 6}
-                  style={{ 
-                    fontFamily: 'system-ui', 
-                    fill: 'hsl(var(--foreground))',
-                    fontSize: '11px',
-                    fontWeight: 600
-                  }}
-                >
-                  {name}
-                </text>
-                <text
-                  textAnchor="middle"
-                  y={4}
-                  style={{ 
-                    fontFamily: 'system-ui', 
-                    fill: '#fff',
-                    fontSize: '10px',
-                    fontWeight: 600
-                  }}
-                >
-                  {data.employees}
-                </text>
-              </Marker>
-            )
-          ))}
+                  <text
+                    textAnchor="middle"
+                    y={-Math.max(8, Math.sqrt(data.employees) / 2.5) - 4}
+                    style={{ 
+                      fontFamily: 'system-ui', 
+                      fill: 'hsl(220, 30%, 25%)',
+                      fontSize: '9px',
+                      fontWeight: 600
+                    }}
+                  >
+                    {name}
+                  </text>
+                  <text
+                    textAnchor="middle"
+                    y={3}
+                    style={{ 
+                      fontFamily: 'system-ui', 
+                      fill: '#fff',
+                      fontSize: '8px',
+                      fontWeight: 700
+                    }}
+                  >
+                    {data.employees}
+                  </text>
+                </Marker>
+              )
+            ))}
+          </ZoomableGroup>
         </ComposableMap>
       </div>
 
       {/* Legend */}
-      <div className="flex items-center justify-center gap-4 mt-4">
-        <div className="flex items-center gap-2">
-          <div className="w-24 h-4 bg-gradient-to-r from-[hsl(220,20%,92%)] via-[hsl(220,50%,65%)] to-[hsl(220,50%,40%)] rounded"></div>
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <span>0</span>
-            <span>200</span>
-            <span>400+</span>
+      <div className="flex items-center justify-center gap-6 mt-4">
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">Employees:</span>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(220, 25%, 90%)' }}></div>
+            <span className="text-xs text-muted-foreground">0</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(220, 55%, 60%)' }}></div>
+            <span className="text-xs text-muted-foreground">200</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="w-4 h-4 rounded" style={{ backgroundColor: 'hsl(220, 55%, 40%)' }}></div>
+            <span className="text-xs text-muted-foreground">400+</span>
           </div>
         </div>
       </div>
