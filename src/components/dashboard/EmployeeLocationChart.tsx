@@ -1,26 +1,54 @@
 import { Menu } from 'lucide-react';
+import { ComposableMap, Geographies, Geography, Marker } from 'react-simple-maps';
+import { useState } from 'react';
 
-// South African province data
-const provinceData = [
-  { name: 'Northern Cape', employees: 0, x: 25, y: 50, width: 30 },
-  { name: 'Western Cape', employees: 38, x: 22, y: 75, width: 18 },
-  { name: 'Eastern Cape', employees: 0, x: 55, y: 72, width: 22 },
-  { name: 'Free State', employees: 0, x: 45, y: 45, width: 18 },
-  { name: 'KwaZulu-Natal', employees: 130, x: 68, y: 55, width: 15 },
-  { name: 'Gauteng', employees: 409, x: 55, y: 32, width: 10 },
-  { name: 'Mpumalanga', employees: 0, x: 68, y: 30, width: 12 },
-  { name: 'Limpopo', employees: 0, x: 58, y: 15, width: 18 },
-  { name: 'North West', employees: 0, x: 38, y: 30, width: 15 },
-];
+// South African provinces TopoJSON from deldersveld collection
+const geoUrl = 'https://raw.githubusercontent.com/deldersveld/topojson/master/countries/south-africa/south-africa-provinces.json';
 
-const getColorIntensity = (value: number, max: number) => {
+// Province data with coordinates for markers
+const provinceData: Record<string, { employees: number; coordinates: [number, number] }> = {
+  'Eastern Cape': { employees: 0, coordinates: [26.5, -32.0] },
+  'Free State': { employees: 0, coordinates: [26.5, -29.0] },
+  'Gauteng': { employees: 409, coordinates: [28.0, -26.0] },
+  'KwaZulu-Natal': { employees: 130, coordinates: [30.5, -29.5] },
+  'Limpopo': { employees: 0, coordinates: [29.5, -23.5] },
+  'Mpumalanga': { employees: 0, coordinates: [30.0, -25.5] },
+  'Northern Cape': { employees: 0, coordinates: [21.0, -29.0] },
+  'North West': { employees: 0, coordinates: [25.5, -26.5] },
+  'Western Cape': { employees: 38, coordinates: [19.5, -33.5] },
+};
+
+// Map province names from GeoJSON to our data
+const getProvinceKey = (geoName: string): string => {
+  const mappings: Record<string, string> = {
+    'Eastern Cape': 'Eastern Cape',
+    'Free State': 'Free State',
+    'Gauteng': 'Gauteng',
+    'KwaZulu-Natal': 'KwaZulu-Natal',
+    'Kwazulu-Natal': 'KwaZulu-Natal',
+    'Limpopo': 'Limpopo',
+    'Mpumalanga': 'Mpumalanga',
+    'Northern Cape': 'Northern Cape',
+    'North West': 'North West',
+    'North-West': 'North West',
+    'Western Cape': 'Western Cape',
+  };
+  return mappings[geoName] || geoName;
+};
+
+const getColorIntensity = (value: number, max: number): string => {
   if (value === 0) return 'hsl(220, 20%, 92%)';
   const intensity = Math.min(value / max, 1);
-  return `hsl(220, 30%, ${90 - intensity * 40}%)`;
+  // Blue gradient: from light to dark blue
+  const lightness = 85 - intensity * 45;
+  return `hsl(220, 50%, ${lightness}%)`;
 };
 
 const EmployeeLocationChart = () => {
-  const maxEmployees = Math.max(...provinceData.map(p => p.employees));
+  const [tooltipContent, setTooltipContent] = useState<string>('');
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  
+  const maxEmployees = Math.max(...Object.values(provinceData).map(p => p.employees));
 
   return (
     <div className="py-4">
@@ -34,62 +62,119 @@ const EmployeeLocationChart = () => {
         </button>
       </div>
       
-      {/* SVG Map representation */}
-      <div className="relative h-[350px] w-full flex items-center justify-center">
-        <svg viewBox="0 0 100 100" className="w-full max-w-2xl h-full">
-          {/* Simplified South Africa shape */}
-          <path
-            d="M15,70 L20,45 L25,30 L35,20 L50,15 L65,12 L80,18 L85,30 L82,45 L80,60 L75,75 L60,82 L45,85 L30,82 L18,78 Z"
-            fill="hsl(220, 20%, 95%)"
-            stroke="hsl(var(--border))"
-            strokeWidth="0.5"
-          />
+      {/* Map Container */}
+      <div className="relative h-[400px] w-full flex items-center justify-center">
+        {tooltipContent && (
+          <div 
+            className="absolute z-10 bg-popover border border-border rounded-md px-3 py-2 shadow-lg pointer-events-none"
+            style={{ left: tooltipPosition.x, top: tooltipPosition.y, transform: 'translate(-50%, -100%)' }}
+          >
+            <span className="text-sm font-medium text-foreground">{tooltipContent}</span>
+          </div>
+        )}
+        
+        <ComposableMap
+          projection="geoMercator"
+          projectionConfig={{
+            scale: 1200,
+            center: [25, -29],
+          }}
+          className="w-full h-full"
+        >
+          <Geographies geography={geoUrl}>
+            {({ geographies }) =>
+              geographies.map((geo) => {
+                const provinceName = geo.properties.NAME_1 || geo.properties.name || '';
+                const mappedName = getProvinceKey(provinceName);
+                const data = provinceData[mappedName];
+                const employees = data?.employees || 0;
+                
+                return (
+                  <Geography
+                    key={geo.rsmKey}
+                    geography={geo}
+                    fill={getColorIntensity(employees, maxEmployees)}
+                    stroke="hsl(var(--border))"
+                    strokeWidth={0.5}
+                    style={{
+                      default: { outline: 'none' },
+                      hover: { 
+                        fill: employees > 0 ? 'hsl(220, 60%, 50%)' : 'hsl(220, 20%, 85%)',
+                        outline: 'none',
+                        cursor: 'pointer'
+                      },
+                      pressed: { outline: 'none' },
+                    }}
+                    onMouseEnter={(evt) => {
+                      const rect = (evt.target as SVGElement).getBoundingClientRect();
+                      const container = (evt.target as SVGElement).closest('.relative')?.getBoundingClientRect();
+                      if (container) {
+                        setTooltipPosition({
+                          x: rect.left + rect.width / 2 - container.left,
+                          y: rect.top - container.top - 10
+                        });
+                      }
+                      setTooltipContent(`${mappedName}: ${employees} employees`);
+                    }}
+                    onMouseLeave={() => {
+                      setTooltipContent('');
+                    }}
+                  />
+                );
+              })
+            }
+          </Geographies>
           
-          {/* Province labels and circles */}
-          {provinceData.map((province) => (
-            <g key={province.name}>
-              <circle
-                cx={province.x}
-                cy={province.y}
-                r={Math.max(2, Math.sqrt(province.employees) / 4)}
-                fill={getColorIntensity(province.employees, maxEmployees)}
-                stroke="hsl(var(--border))"
-                strokeWidth="0.3"
-              />
-              <text
-                x={province.x}
-                y={province.y - 5}
-                textAnchor="middle"
-                fontSize="3"
-                fill="hsl(var(--foreground))"
-                fontWeight="500"
-              >
-                {province.name}
-              </text>
-              {province.employees > 0 && (
+          {/* Province markers with employee counts */}
+          {Object.entries(provinceData).map(([name, data]) => (
+            data.employees > 0 && (
+              <Marker key={name} coordinates={data.coordinates}>
+                <circle
+                  r={Math.max(6, Math.sqrt(data.employees) / 2)}
+                  fill="hsl(220, 70%, 45%)"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  opacity={0.9}
+                />
                 <text
-                  x={province.x}
-                  y={province.y + 1.5}
                   textAnchor="middle"
-                  fontSize="2.5"
-                  fill="hsl(var(--muted-foreground))"
+                  y={-Math.max(8, Math.sqrt(data.employees) / 2) - 6}
+                  style={{ 
+                    fontFamily: 'system-ui', 
+                    fill: 'hsl(var(--foreground))',
+                    fontSize: '11px',
+                    fontWeight: 600
+                  }}
                 >
-                  {province.employees}
+                  {name}
                 </text>
-              )}
-            </g>
+                <text
+                  textAnchor="middle"
+                  y={4}
+                  style={{ 
+                    fontFamily: 'system-ui', 
+                    fill: '#fff',
+                    fontSize: '10px',
+                    fontWeight: 600
+                  }}
+                >
+                  {data.employees}
+                </text>
+              </Marker>
+            )
           ))}
-        </svg>
+        </ComposableMap>
       </div>
 
       {/* Legend */}
       <div className="flex items-center justify-center gap-4 mt-4">
         <div className="flex items-center gap-2">
-          <div className="w-16 h-3 bg-gradient-to-r from-[hsl(220,20%,92%)] to-[hsl(220,30%,50%)] rounded"></div>
-          <span className="text-xs text-muted-foreground">0</span>
-          <span className="text-xs text-muted-foreground">200</span>
-          <span className="text-xs text-muted-foreground">400</span>
-          <span className="text-xs text-muted-foreground">600</span>
+          <div className="w-24 h-4 bg-gradient-to-r from-[hsl(220,20%,92%)] via-[hsl(220,50%,65%)] to-[hsl(220,50%,40%)] rounded"></div>
+          <div className="flex gap-4 text-xs text-muted-foreground">
+            <span>0</span>
+            <span>200</span>
+            <span>400+</span>
+          </div>
         </div>
       </div>
     </div>
